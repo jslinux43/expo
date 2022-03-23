@@ -6,7 +6,7 @@ public class EASClientIDModule: Module {
   public func definition() -> ModuleDefinition {
     name("EASClientID")
     constants([
-      "clientID": EASClientID.uuid.uuidString
+      "clientID": EASClientID.uuid().uuidString
     ])
   }
 }
