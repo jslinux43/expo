@@ -43,13 +43,14 @@ type Props = NavigationProps & {
   allHistory: HistoryList;
   isAuthenticated: boolean;
   theme: string;
+  accountName?: string;
 };
 
 type State = {
   projects: DevSession[];
   isNetworkAvailable: boolean;
   isRefreshing: boolean;
-  currentUser?: Exclude<HomeScreenDataQuery['viewer'], null>;
+  data?: Exclude<HomeScreenDataQuery['account']['byName'], null>;
 };
 
 type NavigationProps = StackScreenProps<HomeStackRoutes, 'Home'>;
@@ -62,7 +63,7 @@ export class HomeScreenView extends React.Component<Props, State> {
     projects: [],
     isNetworkAvailable: Connectivity.isAvailable(),
     isRefreshing: false,
-    currentUser: undefined,
+    data: undefined,
   };
 
   componentDidMount() {
@@ -92,11 +93,11 @@ export class HomeScreenView extends React.Component<Props, State> {
   }
 
   render() {
-    const { projects, isRefreshing, currentUser } = this.state;
+    const { projects, isRefreshing, data } = this.state;
 
     return (
       <View style={styles.container}>
-        <HomeScreenHeader currentUser={currentUser} />
+        <HomeScreenHeader currentUser={data} />
         <ScrollView
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={this._handleRefreshAsync} />
@@ -141,25 +142,25 @@ export class HomeScreenView extends React.Component<Props, State> {
               <RecentlyOpenedSection recentHistory={this.props.recentHistory} />
             </>
           ) : null}
-          {currentUser?.apps.length ? (
+          {data?.apps.length && this.props.accountName ? (
             <>
               <Spacer.Vertical size="medium" />
               <RedesignedSectionHeader header="Projects" />
               <ProjectsSection
-                accountName={currentUser.username}
-                apps={currentUser.apps.slice(0, 3)}
-                showMore={currentUser.apps.length > 3}
+                accountName={this.props.accountName}
+                apps={data.apps.slice(0, 3)}
+                showMore={data.apps.length > 3}
               />
             </>
           ) : null}
-          {currentUser?.snacks.length ? (
+          {data?.snacks.length && this.props.accountName ? (
             <>
               <Spacer.Vertical size="medium" />
               <RedesignedSectionHeader header="Snacks" />
               <SnacksSection
-                accountName={currentUser.username}
-                snacks={currentUser.snacks.slice(0, 3)}
-                showMore={currentUser.snacks.length > 3}
+                accountName={this.props.accountName}
+                snacks={data.snacks.slice(0, 3)}
+                showMore={data.snacks.length > 3}
               />
             </>
           ) : null}
@@ -215,6 +216,8 @@ export class HomeScreenView extends React.Component<Props, State> {
   };
 
   private _fetchProjectsAsync = async () => {
+    const { accountName } = this.props;
+
     try {
       const api = new ApiV2HttpClient();
 
@@ -222,18 +225,23 @@ export class HomeScreenView extends React.Component<Props, State> {
         api.getAsync('development-sessions', {
           deviceId: getSnackId(),
         }),
-        ApolloClient.query<HomeScreenDataQuery, HomeScreenDataQueryVariables>({
-          query: HomeScreenDataDocument,
-        }),
+        accountName
+          ? ApolloClient.query<HomeScreenDataQuery, HomeScreenDataQueryVariables>({
+              query: HomeScreenDataDocument,
+              variables: {
+                accountName,
+              },
+            })
+          : new Promise<undefined>((resolve) => {
+              resolve(undefined);
+            }),
       ]);
 
-      const currentUser = graphQLResponse.data.viewer ?? undefined;
-
-      this.setState({ projects, currentUser });
+      this.setState({ projects, data: graphQLResponse?.data.account.byName });
     } catch (e) {
       // this doesn't really matter, we will try again later
       if (__DEV__) {
-        console.log(e);
+        console.error(e);
       }
     }
   };

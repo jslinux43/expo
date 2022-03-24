@@ -10,7 +10,6 @@ export type HomeStackRoutes = {
   Home: undefined;
   RedesignedProjectsList: { accountName: string };
   RedesignedSnacksList: { accountName: string };
-  Account: undefined;
 };
 
 export type ProfileStackRoutes = {
